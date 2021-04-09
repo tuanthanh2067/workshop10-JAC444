@@ -1,75 +1,83 @@
 public class Deposit {
+    private int amount;
+    private String currency;
+
+    public Deposit(int amount, String currency) {
+        this.amount = amount;
+        this.currency = currency;
+    }
+
+    int getAmount() { return this.amount; }
+    String getCurrency() { return this.currency; }
+
     public static void main(String[] args) {
         Container container = new Container();
 
-        DepositResource d1 = new DepositResource(container, 1, "dollar");
-        ConsumeResource c1 = new ConsumeResource(container, 1, "dollar");
+        Deposit[] deposits = new Deposit[3];
+        deposits[0] = new Deposit(1, "dollar");
+        deposits[1] = new Deposit(2, "euro");
+        deposits[2] = new Deposit(3, "pound");
 
-        DepositResource d2 = new DepositResource(container, 2, "euro");
-        ConsumeResource c2 = new ConsumeResource(container, 2, "euro");
 
-        DepositResource d3 = new DepositResource(container, 3, "pound");
-        ConsumeResource c3 = new ConsumeResource(container, 3, "pound");
+        DepositResource d = new DepositResource(container, deposits);
+        ConsumeResource c = new ConsumeResource(container, deposits);
 
-        d1.start();
-        c1.start();
-
-        d2.start();
-        c2.start();
-
-        d3.start();
-        c3.start();
+        d.start();
+        c.start();
     }
 }
 
 class DepositResource extends Thread {
     private Container dHold;
-    private int numberOfResources;
-    private String currency;
+    private Deposit[] deposits;
 
-    public DepositResource(Container c, int n, String currency) {
+    public DepositResource(Container c, Deposit[] deposits) {
         super("Deposit resource");
         dHold = c;
-        numberOfResources = n;
-        this.currency = currency;
+        this.deposits = deposits;
     }
 
     public void run() {
-        for (int i = 1; i <= numberOfResources; i++) {
-            try {
-                Thread.sleep( (int) ( Math.random() * 2000 ) );
-            } catch (InterruptedException e) {
-                System.err.println(e.toString());
+        for (int i = 0; i < deposits.length; i++) {
+            for (int j = 1; j <= deposits[i].getAmount(); j++) {
+                try {
+                    Thread.sleep( (int) ( Math.random() * 3000 ) );
+                } catch (InterruptedException e) {
+                    System.err.println(e.toString());
+                }
+
+                dHold.setDepositResource(j, deposits[i].getCurrency());
             }
 
-            dHold.setDepositResource(i, currency);
         }
     }
 }
 
 class ConsumeResource extends Thread {
     private Container cHold;
-    private int numberOfResources;
-    private String currency;
+    private Deposit[] deposits;
 
-    public ConsumeResource(Container c, int n, String currency) {
+    public ConsumeResource(Container c, Deposit[] deposits) {
         super("Consume resource");
         cHold = c;
-        numberOfResources = n;
-        this.currency = currency;
+        this.deposits = deposits;
     }
 
     public void run() {
         int val;
+        int i = 0;
         do {
             // sleep for a random interval
-            try {
-                Thread.sleep( (int) ( Math.random() * 2000 ) );
-            } catch(InterruptedException e) {
-                System.err.println(e.toString());
+            for (int j = 1; j <= deposits[i].getAmount(); j++) {
+                try {
+                    Thread.sleep( (int) ( Math.random() * 3000 ) );
+                } catch(InterruptedException e) {
+                    System.err.println(e.toString());
+                }
+                cHold.getDepositResource();
             }
-            val = cHold.getDepositResource();
-        } while (val != numberOfResources);
+            i++;
+        } while (i != deposits.length);
 
     }
 }
@@ -82,7 +90,7 @@ class Container {
     public synchronized void setDepositResource(int val, String currency) {
         while (!writeable) {
             try {
-                System.out.println("Waiting for my friend");
+                System.out.println("----------------Waiting for my friend to consume the money----------------");
                 wait();
             } catch (InterruptedException e) {
                 e.printStackTrace();
@@ -91,7 +99,7 @@ class Container {
 
         System.out.println(Thread.currentThread().getName() +
                 " deposit money: " + val + " in " + currency);
-        shareInt = val;
+        this.shareInt = val;
         this.currency = currency;
         writeable = false;
         notify();
@@ -100,7 +108,7 @@ class Container {
     public synchronized int getDepositResource() {
         while (writeable) {
             try {
-                System.out.println("Waiting for money");
+                System.out.println("----------------Waiting for me to deposit money----------------");
                 wait();
             } catch (InterruptedException e) {
                 e.printStackTrace();
